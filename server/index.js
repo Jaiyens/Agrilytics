@@ -8,6 +8,7 @@ import { validateRecord } from './reference.js';
 import { BLOCKS, PRODUCTS } from './reference.js';
 import { listRecords, addRecord } from './store.js';
 import { FARMS, networkStats } from './farms.js';
+import { groundsData } from './grounds.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -25,6 +26,11 @@ app.get('/api/reference', (_req, res) => {
 
 app.get('/api/farms', (_req, res) => {
   res.json({ farms: FARMS, stats: networkStats() });
+});
+
+// The focal farm's grounds: block grid spec, per-court status, and the workers on it.
+app.get('/api/grounds', (_req, res) => {
+  res.json(groundsData());
 });
 
 app.get('/api/records', (_req, res) => {

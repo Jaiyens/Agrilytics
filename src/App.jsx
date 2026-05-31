@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Recorder from './components/Recorder.jsx';
 import ReviewCard from './components/ReviewCard.jsx';
 import ReportView from './components/ReportView.jsx';
-import NetworkMap from './components/NetworkMap.jsx';
+import FarmGrounds from './components/FarmGrounds.jsx';
 import { api } from './api.js';
 
 export default function App() {
@@ -12,8 +12,7 @@ export default function App() {
   const [pending, setPending] = useState(null);
   const [records, setRecords] = useState([]);
   const [reference, setReference] = useState(null);
-  const [farms, setFarms] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [grounds, setGrounds] = useState(null);
   const [openReport, setOpenReport] = useState(null);
   const [toast, setToast] = useState('');
 
@@ -23,7 +22,7 @@ export default function App() {
 
   useEffect(() => {
     api.getReference().then(setReference).catch(() => {});
-    api.getFarms().then(({ farms, stats }) => { setFarms(farms); setStats(stats); }).catch(() => {});
+    api.getGrounds().then(setGrounds).catch(() => {});
     loadRecords();
   }, [loadRecords]);
 
@@ -52,13 +51,13 @@ export default function App() {
           <span className="tag">the operating system for the farm</span>
         </div>
         <nav className="modetoggle">
-          <button className={mode === 'network' ? 'active' : ''} onClick={() => setMode('network')}>Network</button>
+          <button className={mode === 'network' ? 'active' : ''} onClick={() => setMode('network')}>Grounds</button>
           <button className={mode === 'field' ? 'active' : ''} onClick={() => setMode('field')}>Field</button>
         </nav>
       </header>
 
       {mode === 'network' ? (
-        <NetworkMap farms={farms} stats={stats} records={records} onCapture={() => setMode('field')} />
+        <FarmGrounds grounds={grounds} onCapture={() => setMode('field')} />
       ) : (
         <main className="field-stage">
           {!pending && (

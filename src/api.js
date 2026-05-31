@@ -23,4 +23,5 @@ export const api = {
   getRecords: () => get('/api/records'),
   getReference: () => get('/api/reference'),
   getFarms: () => get('/api/farms'),
+  getGrounds: () => get('/api/grounds'),
 };

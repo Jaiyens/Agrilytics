@@ -53,13 +53,27 @@ You enter the key and passwords yourself; never paste your API key into a chat.
 
 ## The map (dashboard centerpiece)
 
-The dashboard opens on a **dark live map of the San Joaquin Valley** with farm pins (pilots glow amber, online farms pulse), a network stat strip, a slide-in farm detail panel, and the **module grid** that tells the OS story (Compliance live; Labor, Water, Inputs, Traceability "soon").
+The dashboard opens on the **satellite grounds of one farm** (Home Ranch, Fresno), rendered with the **Google Maps JavaScript API** (hybrid imagery). On top of the imagery:
 
-It uses **MapLibre GL + a free CARTO dark style — no API key, no billing, works immediately.** That's deliberate: the "built with Gemini" requirement is met by the voice engine, not the map.
+- the focal block (**River 12**) is split into a clean, labeled grid of **courts** (~12 per acre), drawn as clickable polygons color-coded by status — **clear**, **treated today** (amber), or **restricted · re-entry interval active** (terracotta);
+- **workers** with a device on appear as live pins (online ones pulse and drift); click one for their current court, today's activity, and a **location log / audit trail**;
+- click any court to see exactly what was applied there, by whom, and when — the compliance payoff. "Log an application here" jumps to the voice **Field** mode;
+- below the map, the **module grid** tells the OS story (Compliance live; Labor, Water, Inputs, Traceability "soon").
 
-**Want the "full Google stack" story instead?** Swap to the Google Maps JavaScript API. Note: Google Maps **requires billing enabled** on a Google Cloud project (a card on file) even within the free tier, plus a restricted key. It's a contained swap in `NetworkMap.jsx`, but you must set up billing yourself.
+Why two value props ride on the same tracking: it places each application to the exact court **and** it protects the crew — a timestamped, verifiable record of where each worker was, in case of a wage dispute, theft, or safety incident in the field.
 
-> The farm pins are seeded data. **4 are your real Fresno-area pilots** (tagged "Pilot"); the rest are pipeline. When you pitch, present them as pipeline, not live paying users.
+> **Google Maps needs billing.** It **requires billing enabled** on a Google Cloud project (a card on file) even within the free tier, plus a restricted key — see setup below. Without a key the dashboard shows a placeholder card and the rest of the app still runs. The data (farm, courts, workers) is seeded demo data in `server/grounds.js`; present it as a prototype, not live usage.
+
+### Google Maps key setup (your step — can't be automated)
+
+1. In **Google Cloud Console**, create/select a project.
+2. **Enable the Maps JavaScript API** (APIs & Services → Library).
+3. **Enable billing** on the project (Billing → link a card). Required even on the free tier.
+4. **Create an API key** (APIs & Services → Credentials).
+5. **Restrict the key:** Application restrictions → HTTP referrers → add `http://localhost:5173/*`, `http://localhost:8080/*`, and your deploy domain. API restrictions → restrict to **Maps JavaScript API**.
+6. Paste it into `.env.local` as `VITE_GOOGLE_MAPS_API_KEY=…`, then **restart `npm run dev`** (Vite reads env at startup).
+
+`DEMO_MAP_ID` is used by default for the Advanced Markers; for production create a Map ID (Maps → Map Management) and set `VITE_GOOGLE_MAPS_MAP_ID`.
 
 ## Run it locally (2 min)
 
@@ -121,7 +135,7 @@ satisfy it, or whether the repo must originate in AI Studio.
 
 ## Demo script (≈90 s, survives a live room)
 
-0. **Network map.** Open on the dark valley map — pins pulsing. "Every pin is a Central Valley operation logging field work by voice." Click a pilot farm → its crop, acres, compliance status, recent activity.
+0. **Grounds map.** Open on the satellite view of the farm, split into courts. "Every court is mapped; every worker with a device on is tracked live." Click a **treated-today** court → exactly what was sprayed, by whom, when. Click a **worker** → their current court + the location log: "this is how we place the application *and* protect the crew."
 1. **Field mode.** Tap a Spanish sample chip (reliable) *or* record live. Watch the form fill.
 2. Point at the **flagged field** on an incomplete sample — "it won't invent a rate it didn't hear; it flags it."
 3. Tap **Approve & log** → the **official Pesticide Use Report** fills in. Hit **Download PDF.**
