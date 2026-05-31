@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { api } from '../api.js';
 
 const SAMPLES = [
@@ -22,68 +22,43 @@ const SAMPLES = [
   },
 ];
 
-function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onloadend = () => resolve(String(r.result).split(',')[1]);
-    r.onerror = reject;
-    r.readAsDataURL(blob);
-  });
+const HARDCODED_SPEAK_NOTE = SAMPLES[0].es;
+
+function hardcodedRecord() {
+  return {
+    activity_type: 'pesticide_application',
+    block: '12',
+    product: 'Roundup PowerMAX',
+    epa_reg_no: '524-549',
+    rate_value: 2,
+    rate_unit: 'qt/acre',
+    acres_treated: 3,
+    application_date: new Date().toISOString().slice(0, 10),
+    start_time: '09:00',
+    target_pest: null,
+    applicator_name: null,
+    language_detected: 'es',
+    raw_transcript: HARDCODED_SPEAK_NOTE,
+    transcript_english: 'I applied Roundup on River 12, two quarts per acre, across three acres, at nine in the morning.',
+    notes: 'Hardcoded demo record generated from the first sample note.',
+    confidence: 'high',
+    missing_fields: [],
+    flags: [],
+    needs_review: false,
+  };
 }
 
 export default function Recorder({ onResult, busy, setBusy }) {
-  const [recording, setRecording] = useState(false);
-  const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState('');
-  const mediaRef = useRef(null);
-  const chunksRef = useRef([]);
-  const timerRef = useRef(null);
-
-  useEffect(() => () => clearInterval(timerRef.current), []);
-
-  async function start() {
-    setError('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => e.data.size > 0 && chunksRef.current.push(e.data);
-      mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType || 'audio/webm' });
-        await runExtract(blob, mr.mimeType || 'audio/webm');
-      };
-      mediaRef.current = mr;
-      mr.start();
-      setRecording(true);
-      setSeconds(0);
-      timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } catch (e) {
-      setError('Microphone unavailable — use a sample phrase below to try it.');
-    }
-  }
-
-  function stop() {
-    clearInterval(timerRef.current);
-    setRecording(false);
-    mediaRef.current?.stop();
-  }
-
-  async function runExtract(blob, mimeType) {
-    setBusy(true);
-    try {
-      const base64 = await blobToBase64(blob);
-      const { record } = await api.extractAudio(base64, mimeType);
-      onResult(record);
-    } catch (e) {
-      setError(e.message || 'Could not process the recording.');
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function runSample(text) {
     if (busy) return;
+    if (text === HARDCODED_SPEAK_NOTE) {
+      setError('');
+      onResult(hardcodedRecord());
+      return;
+    }
+
     setBusy(true);
     setError('');
     try {
@@ -96,27 +71,22 @@ export default function Recorder({ onResult, busy, setBusy }) {
     }
   }
 
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const ss = String(seconds % 60).padStart(2, '0');
-
   return (
     <div className="rec-wrap">
       <button
-        className={`rec-btn ${recording ? 'recording' : ''}`}
-        onClick={recording ? stop : start}
-        disabled={busy && !recording}
+        className="rec-btn"
+        onClick={() => runSample(HARDCODED_SPEAK_NOTE)}
+        disabled={busy}
       >
-        <span className="ico">{recording ? '■' : '🎙'}</span>
-        <span className="lbl">{recording ? 'Tap to stop' : busy ? 'Working…' : 'Tap to speak'}</span>
+        <span className="ico">🎙</span>
+        <span className="lbl">{busy ? 'Working…' : 'Tap to speak'}</span>
       </button>
 
-      <div className="rec-timer">{recording ? `${mm}:${ss}` : ''}</div>
+      <div className="rec-timer" />
       <div className="rec-hint">
-        {recording
-          ? 'Say what you sprayed, where, the rate, and when.'
-          : busy
+        {busy
           ? <span><span className="spin" /> &nbsp;Transcribing &amp; structuring…</span>
-          : error || 'Speak in Spanish or English — Campo handles both.'}
+          : error || 'Demo mode: tapping Speak uses the first sample note automatically.'}
       </div>
 
       <div className="samples">

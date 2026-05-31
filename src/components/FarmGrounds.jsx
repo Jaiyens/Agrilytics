@@ -28,15 +28,15 @@ function statusLabel(s) {
   return 'Clear';
 }
 
-function makeWorkerEl(w) {
+function makeWorkerEl(w, active) {
   const el = document.createElement('div');
-  el.className = `worker-pin ${w.device}`;
+  el.className = `worker-pin ${w.device}${active ? ' captured' : ''}`;
   el.title = `${w.name} · ${w.role}`;
   el.innerHTML = '<span class="wp-dot"></span>';
   return el;
 }
 
-export default function FarmGrounds({ grounds, onCapture }) {
+export default function FarmGrounds({ grounds, onCapture, onToast }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const libsRef = useRef(null);
@@ -50,6 +50,9 @@ export default function FarmGrounds({ grounds, onCapture }) {
   const [loadError, setLoadError] = useState(false);
   const [selectedCourt, setSelectedCourt] = useState(null);
   const [selectedWorker, setSelectedWorker] = useState(null);
+  // The "simulate field capture" trigger fires for the primary worker (Jaiyen Shetty):
+  // once true, his pin activates and his panel reveals the captured record.
+  const [simulated, setSimulated] = useState(false);
 
   const farm = grounds?.farm;
   const block = farm?.block;
@@ -101,7 +104,7 @@ export default function FarmGrounds({ grounds, onCapture }) {
         // Zoom-gate the court labels so the grid stays legible when zoomed out.
         const applyLabelVis = () => {
           const z = map.getZoom();
-          labelsRef.current.forEach((m) => { m.content.style.display = z >= 17 ? '' : 'none'; });
+          labelsRef.current.forEach((m) => { m.content.style.display = z >= 18 ? '' : 'none'; });
         };
         map.addListener('zoom_changed', applyLabelVis);
 
@@ -156,7 +159,7 @@ export default function FarmGrounds({ grounds, onCapture }) {
       return new AdvancedMarkerElement({ map, position: cell.center, content: el, gmpClickable: false, zIndex: 2 });
     });
     const z = map.getZoom();
-    labelsRef.current.forEach((m) => { m.content.style.display = z >= 17 ? '' : 'none'; });
+    labelsRef.current.forEach((m) => { m.content.style.display = z >= 18 ? '' : 'none'; });
 
     return () => {
       polysRef.current.forEach((p) => { event.clearInstanceListeners(p); p.setMap(null); });
@@ -176,7 +179,8 @@ export default function FarmGrounds({ grounds, onCapture }) {
       .map((w) => {
         const { position } = workerToPositions(w, cellsById);
         if (!position) return null;
-        const m = new AdvancedMarkerElement({ map, position, content: makeWorkerEl(w), gmpClickable: true, zIndex: 10 });
+        const active = w.primary && simulated; // the just-captured pin drops in + pulses
+        const m = new AdvancedMarkerElement({ map, position, content: makeWorkerEl(w, active), gmpClickable: true, zIndex: active ? 20 : 10 });
         m.addListener('click', () => { setSelectedCourt(null); setSelectedWorker(w); });
         return { id: w.id, marker: m, base: position, online: w.device === 'online' };
       })
@@ -197,7 +201,17 @@ export default function FarmGrounds({ grounds, onCapture }) {
       workerMarkersRef.current.forEach(({ marker }) => { event.clearInstanceListeners(marker); marker.map = null; });
       workerMarkersRef.current = [];
     };
-  }, [mapReady, workers, cellsById]);
+  }, [mapReady, workers, cellsById, simulated]);
+
+  // ---- SIMULATE FIELD CAPTURE: fire for the primary worker (Jaiyen Shetty) ----
+  function simulateCapture() {
+    const primary = workers.find((w) => w.primary);
+    if (!primary) return;
+    setSimulated(true);
+    setSelectedCourt(null);
+    setSelectedWorker(primary);
+    onToast?.(`New activity — ${primary.name} just logged an application on ${block?.label}`);
+  }
 
   // ---- TRAIL: draw the selected worker's recent path ----
   useEffect(() => {
@@ -262,6 +276,13 @@ export default function FarmGrounds({ grounds, onCapture }) {
           <div className="li"><span className="swatch" style={{ background: 'var(--online)' }} /> Device online</div>
         </div>
 
+        {mapReady && workers.some((w) => w.primary) && (
+          <button className={`sim-capture ${simulated ? 'done' : ''}`} onClick={simulateCapture}>
+            <span className="pulse" />
+            {simulated ? 'Field capture simulated' : 'Simulate field capture'}
+          </button>
+        )}
+
         {selectedCourt && (
           <div className="farm-panel court-panel">
             <button className="close" onClick={() => setSelectedCourt(null)}>×</button>
@@ -315,9 +336,32 @@ export default function FarmGrounds({ grounds, onCapture }) {
               {selectedWorker.device === 'online' ? 'Device online · location live' : selectedWorker.device === 'idle' ? 'Device idle · last fix recent' : 'Device offline · location gap'}
             </div>
 
+            {simulated && selectedWorker.primary && selectedWorker.captureSample && (() => {
+              const cap = selectedWorker.captureSample;
+              return (
+                <div className="capture-rec">
+                  <div className="fh">Captured just now · field voice note</div>
+                  <div className="transcript">
+                    <div className="heard">“{cap.transcriptEs}”</div>
+                    <div className="en">{cap.transcriptEn}</div>
+                  </div>
+                  <div className="farm-meta">
+                    <div className="m"><div className="mk">Product</div><div className="mv">{cap.product}</div></div>
+                    <div className="m"><div className="mk">Rate</div><div className="mv mono">{cap.rate}</div></div>
+                    <div className="m"><div className="mk">Block</div><div className="mv">{cap.block} · {cap.court}</div></div>
+                    <div className="m"><div className="mk">Time</div><div className="mv mono">{cap.time}</div></div>
+                  </div>
+                  <div className="flagnote warn"><span className="dot" />{cap.flag.field} — {cap.flag.note}</div>
+                </div>
+              );
+            })()}
+
             <div className="farm-feed">
               <div className="fh">Today on the block</div>
-              {selectedWorker.todayLog.map((e, i) => (
+              {(simulated && selectedWorker.primary && selectedWorker.captureSample
+                ? [{ time: selectedWorker.captureSample.time, court: selectedWorker.captureSample.court, action: `Logged application · ${selectedWorker.captureSample.product} · ${selectedWorker.captureSample.rate}` }, ...selectedWorker.todayLog]
+                : selectedWorker.todayLog
+              ).map((e, i) => (
                 <div className="feed-item" key={i}>
                   {e.action}
                   <div className="ft">{e.time}{e.court !== '—' ? ` · Court ${e.court}` : ''}</div>

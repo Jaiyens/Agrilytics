@@ -6,6 +6,7 @@ import FarmGrounds from './components/FarmGrounds.jsx';
 import { api } from './api.js';
 
 export default function App() {
+  const [showHome, setShowHome] = useState(true);
   const [mode, setMode] = useState('network'); // 'network' | 'field'
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,6 +44,10 @@ export default function App() {
     }
   }
 
+  if (showHome) {
+    return <HomePage onEnter={() => setShowHome(false)} />;
+  }
+
   return (
     <div className={`app ${mode}`}>
       <header className="topbar">
@@ -57,7 +62,7 @@ export default function App() {
       </header>
 
       {mode === 'network' ? (
-        <FarmGrounds grounds={grounds} onCapture={() => setMode('field')} />
+        <FarmGrounds grounds={grounds} onCapture={() => setMode('field')} onToast={flash} />
       ) : (
         <main className="field-stage">
           {!pending && (
@@ -86,5 +91,32 @@ export default function App() {
 
       {toast && <div className="toast"><span className="tick">✓</span>{toast}</div>}
     </div>
+  );
+}
+
+function HomePage({ onEnter }) {
+  return (
+    <main className="home-hero">
+      <video className="home-video" autoPlay muted loop playsInline src="/farm-broll.mp4" />
+      <div className="home-scrim" />
+
+      <header className="home-nav">
+        <div className="home-logo">Agrilytics</div>
+        <nav>
+          <a href="#platform">Platform</a>
+          <a href="#compliance">Compliance</a>
+          <a href="#network">Network</a>
+          <a href="#company">Company</a>
+        </nav>
+        <button type="button" onClick={onEnter}>Open Dashboard</button>
+      </header>
+
+      <section className="home-copy">
+        <div className="home-eyebrow">AGRICULTURE OS</div>
+        <h1>The operating system for the farm.</h1>
+        <p>Voice-captured field work, live operations, and compliance reports from the ground up.</p>
+        <button type="button" onClick={onEnter}>Enter Agrilytics</button>
+      </section>
+    </main>
   );
 }
