@@ -71,9 +71,9 @@ Why two value props ride on the same tracking: it places each application to the
 3. **Enable billing** on the project (Billing → link a card). Required even on the free tier.
 4. **Create an API key** (APIs & Services → Credentials).
 5. **Restrict the key:** Application restrictions → HTTP referrers → add `http://localhost:5173/*`, `http://localhost:8080/*`, and your deploy domain. API restrictions → restrict to **Maps JavaScript API**.
-6. Paste it into `.env.local` as `VITE_GOOGLE_MAPS_API_KEY=…`, then **restart `npm run dev`** (Vite reads env at startup).
+6. Paste it into `.env.local` as `GOOGLE_CLOUD_API_KEY=…`, then **restart `npm run dev`**. The server reads it and serves it to the client via `/api/grounds` — no `VITE_` prefix and no rebuild needed. (A `VITE_GOOGLE_MAPS_API_KEY` build-time var still works as a fallback.)
 
-`DEMO_MAP_ID` is used by default for the Advanced Markers; for production create a Map ID (Maps → Map Management) and set `VITE_GOOGLE_MAPS_MAP_ID`.
+`DEMO_MAP_ID` is used by default for the Advanced Markers; for production create a Map ID (Maps → Map Management) and set `GOOGLE_CLOUD_MAP_ID`.
 
 ## Run it locally (2 min)
 

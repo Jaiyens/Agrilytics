@@ -144,5 +144,10 @@ export function groundsData() {
     workers: WORKERS,
     labels: Object.fromEntries(treated.map((id) => [id, labelFor(id)])),
     stats,
+    // The Maps JS key is inherently client-visible (referrer-restricted), so handing it to
+    // the client here is equivalent to inlining it — but it means the user only needs ONE
+    // var in .env.local (no VITE_ prefix) and no rebuild when the key changes.
+    mapsApiKey: process.env.GOOGLE_CLOUD_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    mapsMapId: process.env.GOOGLE_CLOUD_MAP_ID || process.env.VITE_GOOGLE_MAPS_MAP_ID || '',
   };
 }

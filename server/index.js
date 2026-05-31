@@ -1,7 +1,7 @@
+import './env.js'; // must come first — populates process.env before gemini.js reads it
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import 'dotenv/config';
 
 import { extractRecord, MODEL } from './gemini.js';
 import { validateRecord } from './reference.js';

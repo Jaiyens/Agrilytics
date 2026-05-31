@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
 import { buildCells, workerToPositions } from './courts.js';
 
-const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
+// The Maps key + Map ID come from the server (/api/grounds, read from GOOGLE_CLOUD_API_KEY),
+// with VITE_ build-time env vars as a fallback. See derived `apiKey` / `gmapId` in the component.
 
 // Same OS-module story as the old network view — kept below the grounds map.
 const MODULES = [
@@ -56,6 +56,10 @@ export default function FarmGrounds({ grounds, onCapture }) {
   const statusMap = grounds?.statusMap || {};
   const workers = useMemo(() => grounds?.workers || [], [grounds]);
   const stats = grounds?.stats || {};
+  // Prefer the server-provided key (GOOGLE_CLOUD_API_KEY in .env.local) so no VITE_ prefix is
+  // needed; fall back to a VITE_ build-time var if one is set.
+  const apiKey = grounds?.mapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+  const gmapId = grounds?.mapsMapId || import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
 
   const cells = useMemo(() => (block?.gridSpec ? buildCells(block.gridSpec) : []), [block]);
   const cellsById = useMemo(() => Object.fromEntries(cells.map((c) => [c.id, c])), [cells]);
@@ -65,12 +69,12 @@ export default function FarmGrounds({ grounds, onCapture }) {
 
   // ---- INIT MAP (once block center is known; not on data changes) ----
   useEffect(() => {
-    if (!API_KEY || !block || mapRef.current || !containerRef.current) return;
+    if (!apiKey || !block || mapRef.current || !containerRef.current) return;
     let cancelled = false;
 
     // v2 functional loader API (the Loader class is deprecated). Idempotent + singleton,
     // so it's safe under React 18 StrictMode's double-mount.
-    setOptions({ key: API_KEY, v: 'weekly' });
+    setOptions({ key: apiKey, v: 'weekly' });
     Promise.all([importLibrary('maps'), importLibrary('marker')])
       .then(([mapsLib, markerLib]) => {
         if (cancelled || mapRef.current) return; // StrictMode async double-mount guard
@@ -80,7 +84,7 @@ export default function FarmGrounds({ grounds, onCapture }) {
           center: { lat: block.centerLat, lng: block.centerLng },
           zoom: block.zoom || 18,
           mapTypeId: 'hybrid',
-          mapId: MAP_ID,
+          mapId: gmapId,
           tilt: 0,
           gestureHandling: 'greedy',
           mapTypeControl: false,
@@ -112,7 +116,7 @@ export default function FarmGrounds({ grounds, onCapture }) {
       setMapReady(false);
       if (containerRef.current) containerRef.current.innerHTML = ''; // no map.remove() in Google Maps
     };
-  }, [block?.centerLat, block?.centerLng]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [apiKey, block?.centerLat, block?.centerLng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- COURTS: polygons + labels ----
   useEffect(() => {
@@ -172,7 +176,7 @@ export default function FarmGrounds({ grounds, onCapture }) {
       .map((w) => {
         const { position } = workerToPositions(w, cellsById);
         if (!position) return null;
-        const m = new AdvancedMarkerElement({ map, position, content: makeWorkerEl(w), zIndex: 10 });
+        const m = new AdvancedMarkerElement({ map, position, content: makeWorkerEl(w), gmpClickable: true, zIndex: 10 });
         m.addListener('click', () => { setSelectedCourt(null); setSelectedWorker(w); });
         return { id: w.id, marker: m, base: position, online: w.device === 'online' };
       })
@@ -214,12 +218,12 @@ export default function FarmGrounds({ grounds, onCapture }) {
     return () => { if (trailRef.current) { trailRef.current.setMap(null); trailRef.current = null; } };
   }, [mapReady, selectedWorker, cellsById]);
 
-  const noMap = !API_KEY || loadError;
+  const noMap = !apiKey || loadError;
 
   return (
     <div className="network grounds">
       <div className="map-wrap">
-        {API_KEY && <div className="gmap" ref={containerRef} />}
+        {apiKey && <div className="gmap" ref={containerRef} />}
 
         {noMap && (
           <div className="map-placeholder">
